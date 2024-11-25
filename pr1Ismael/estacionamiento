@@ -1,0 +1,32 @@
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.ThreadLocalRandom;
+
+public class Estacionamiento {
+
+    private static final int CAPACIDAD_ESTACIONAMIENTO = 3; 
+    private static final int NUMERO_VEHICULOS = 10;
+    private final Semaphore semaforo = new Semaphore(CAPACIDAD_ESTACIONAMIENTO);
+
+    public void entrarEstacionamiento(int idVehiculo) {
+        try {
+            System.out.println("Vehículo " + idVehiculo + " intentando entrar al estacionamiento...");
+            semaforo.acquire();
+            System.out.println("Vehículo " + idVehiculo + " ha entrado al estacionamiento.");
+            Thread.sleep(ThreadLocalRandom.current().nextInt(1000, 3000)); 
+            System.out.println("Vehículo " + idVehiculo + " ha salido del estacionamiento.");
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        } finally {
+            semaforo.release(); 
+        }
+    }
+
+    public static void main(String[] args) {
+        Estacionamiento estacionamiento = new Estacionamiento();
+
+        for (int i = 0; i < NUMERO_VEHICULOS; i++) {
+            int idVehiculo = i;
+            new Thread(() -> estacionamiento.entrarEstacionamiento(idVehiculo)).start();
+        }
+    }
+}
