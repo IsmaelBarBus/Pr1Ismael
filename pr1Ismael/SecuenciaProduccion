@@ -1,0 +1,107 @@
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+
+public class SecuenciaProduccion {
+
+    private static final int NUMERO_ITERACIONES = 5;
+    private int paso = 1; 
+    private final Lock lock = new ReentrantLock();
+    private final Condition preparacionCond = lock.newCondition();
+    private final Condition procesamientoCond = lock.newCondition();
+    private final Condition empaqueCond = lock.newCondition();
+
+    public void preparacion(int iteracion) throws InterruptedException {
+        lock.lock();
+        try {
+            while (paso != 1) {
+                preparacionCond.await();
+            }
+            System.out.println("Preparación " + iteracion + " completada");
+            paso = 2;
+            procesamientoCond.signal();
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    public void procesamiento(int iteracion) throws InterruptedException {
+        lock.lock();
+        try {
+            while (paso != 2) {
+                procesamientoCond.await();
+            }
+            System.out.println("Procesamiento " + iteracion + " completado");
+            paso = 3;
+            empaqueCond.signal();
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    public void empaque(int iteracion) throws InterruptedException {
+        lock.lock();
+        try {
+            while (paso != 3) {
+                empaqueCond.await();
+            }
+            System.out.println("Empaque " + iteracion + " completado");
+            paso = 1;
+            preparacionCond.signal();
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    public static void main(String[] args) {
+        SecuenciaProduccion produccion = new SecuenciaProduccion();
+
+        Runnable tareaPreparacion = () -> {
+            for (int i = 1; i <= NUMERO_ITERACIONES; i++) {
+                try {
+                    produccion.preparacion(i);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+        };
+
+        Runnable tareaProcesamiento = () -> {
+            for (int i = 1; i <= NUMERO_ITERACIONES; i++) {
+                try {
+                    produccion.procesamiento(i);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+        };
+
+        Runnable tareaEmpaque = () -> {
+            for (int i = 1; i <= NUMERO_ITERACIONES; i++) {
+                try {
+                    produccion.empaque(i);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+        };
+
+        Thread hiloPreparacion = new Thread(tareaPreparacion);
+        Thread hiloProcesamiento = new Thread(tareaProcesamiento);
+        Thread hiloEmpaque = new Thread(tareaEmpaque);
+
+        hiloPreparacion.start();
+        hiloProcesamiento.start();
+        hiloEmpaque.start();
+
+        try {
+            hiloPreparacion.join();
+            hiloProcesamiento.join();
+            hiloEmpaque.join();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+
+        System.out.println("Secuencia de producción completada.");
+    }
+}
